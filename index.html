@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taguig City University - Smart Classroom Equipment Borrowing System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Firebase SDK Modular Scripts -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { 
+            getAuth, 
+            signInWithEmailAndPassword, 
+            createUserWithEmailAndPassword, 
+            signOut, 
+            onAuthStateChanged 
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { 
+            getFirestore, 
+            collection, 
+            doc, 
+            setDoc, 
+            getDoc, 
+            addDoc, 
+            updateDoc, 
+            onSnapshot, 
+            serverTimestamp 
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // Firebase Configuration
+        const firebaseConfig = {
+          apiKey: "AIzaSyCTIGZ5HLHApLgZeE0GnfIBcUEeWL3JUGk",
+          authDomain: "smart-borrowing-system.firebaseapp.com",
+          projectId: "smart-borrowing-system",
+          storageBucket: "smart-borrowing-system.firebasestorage.app",
+          messagingSenderId: "1014464697601",
+          appId: "1:1014464697601:web:5affa00ccf223c18437700",
+          measurementId: "G-LWRL6WLFFW"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        window.firebaseAuth = auth;
+        window.firebaseDb = db;
+        window.fbAuthFuncs = { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged };
+        window.fbFSFuncs = { collection, doc, setDoc, getDoc, addDoc, updateDoc, onSnapshot, serverTimestamp };
+    </script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            min-height: 100vh;
+            font-family: 'Montserrat', sans-serif;
+            background-color: #1a1a1a;
+            color: #ffffff;
+            scroll-behavior: smooth;
+        }
+
+        /* Top Navigation Header */
+        header {
+            height: 70px;
+            background-color: #b5a184;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 4%;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .nav-group {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .nav-link {
+            color: #ffffff;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+            position: relative;
+            padding: 4px 0;
+            cursor: pointer;
+            background: none;
+            border: none;
+        }
+
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0%;
+            height: 2px;
+            background-color: #ffffff;
+            transition: width 0.3s ease;
+        }
+
+        .nav-link:hover::after, .nav-link.active::after {
+            width: 100%;
+        }
+
+        .site-header-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: #ffffff;
+            letter-spacing: 0.5px;
+            text-align: center;
+        }
+
+        .user-badge {
+            font-size: 0.8rem;
+            background: rgba(0, 0, 0, 0.25);
+            padding: 6px 14px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .role-indicator {
+            font-size: 0.7rem;
+            background: #1a1a1a;
+            color: #b5a184;
+            padding: 2px 8px;
+            border-radius: 10px;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        /* Auth Gate Overlay Container */
+        .auth-gate-container {
+            min-height: calc(100vh - 70px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-image: linear-gradient(rgba(20, 20, 20, 0.85), rgba(20, 20, 20, 0.95)), 
+                              url('https://images.unsplash.com/photo-1541829070764-84a7d30dd3f3?auto=format&fit=crop&w=1920&q=80');
+            background-size: cover;
+            background-position: center;
+            padding: 20px;
+        }
+
+        .auth-card {
+            background: #242424;
+            border: 1px solid #444;
+            width: 100%;
+            max-width: 440px;
+            border-radius: 16px;
+            padding: 35px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+        }
+
+        /* Hero Section */
+        .hero-section {
+            height: calc(100vh - 70px);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-image: linear-gradient(rgba(120, 30, 25, 0.7), rgba(30, 10, 10, 0.85)), 
+                              url('https://images.unsplash.com/photo-1541829070764-84a7d30dd3f3?auto=format&fit=crop&w=1920&q=80');
+            background-size: cover;
+            background-position: center;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .hero-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            max-width: 900px;
+            z-index: 2;
+        }
+
+        .main-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 3rem;
+            font-weight: 500;
+            line-height: 1.25;
+            letter-spacing: 3px;
+            color: #ffffff;
+            text-transform: uppercase;
+            margin-bottom: 30px;
+            text-shadow: 2px 4px 15px rgba(0, 0, 0, 0.6);
+        }
+
+        .main-title span {
+            display: block;
+        }
+
+        .borrow-btn {
+            background-color: #e5e5e5;
+            color: #2b2b2b;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            border: none;
+            padding: 14px 42px;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            text-decoration: none;
+        }
+
+        .borrow-btn:hover {
+            background-color: #ffffff;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+        }
+
+        /* App Sections Container */
+        .app-section {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 60px 20px;
+        }
+
+        .section-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+            color: #b5a184;
+            border-bottom: 2px solid #b5a184;
+            padding-bottom: 10px;
+        }
+
+        .section-subtitle {
+            color: #aaaaaa;
+            margin-bottom: 30px;
+            font-size: 0.95rem;
+        }
+
+        /* Catalog Grid */
+        .catalog-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 25px;
+        }
+
+        .item-card {
+            background: #242424;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .item-card:hover {
+            transform: translateY(-5px);
+            border-color: #b5a184;
+        }
+
+        .item-category {
+            font-size: 0.75rem;
+            background: #333;
+            color: #b5a184;
+            padding: 4px 10px;
+            border-radius: 20px;
+            align-self: flex-start;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .item-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #fff;
+        }
+
+        .item-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid #333;
+            padding-top: 12px;
+        }
+
+        .stock-badge {
+            font-size: 0.8rem;
+            color: #4ade80;
+            font-weight: 500;
+        }
+        .stock-badge.out {
+            color: #f87171;
+        }
+
+        .action-btn {
+            background-color: #b5a184;
+            color: #1a1a1a;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .action-btn:hover {
+            background-color: #cbb494;
+        }
+        .action-btn:disabled {
+            background-color: #444;
+            color: #777;
+            cursor: not-allowed;
+        }
+
+        /* Tables */
+        .table-container {
+            overflow-x: auto;
+            background: #242424;
+            border-radius: 12px;
+            border: 1px solid #333;
+            margin-bottom: 40px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
+        th, td {
+            padding: 15px 20px;
+            border-bottom: 1px solid #333;
+        }
+
+        th {
+            background-color: #2b2b2b;
+            color: #b5a184;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .status-badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .status-pending { background: rgba(234, 179, 8, 0.2); color: #facc15; }
+        .status-approved { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+        .status-borrowed { background: rgba(74, 222, 128, 0.2); color: #4ade80; }
+        .status-rejected { background: rgba(248, 113, 113, 0.2); color: #f87171; }
+        .status-returned { background: rgba(156, 163, 175, 0.2); color: #9ca3af; }
+
+        /* Modals */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-box {
+            background: #242424;
+            border: 1px solid #444;
+            width: 100%;
+            max-width: 450px;
+            border-radius: 14px;
+            padding: 30px;
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            color: #aaa;
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #b5a184;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 8px;
+            color: #fff;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.95rem;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #b5a184;
+        }
+
+        .auth-toggle-link {
+            color: #b5a184;
+            text-decoration: underline;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+
+        /* Toast Notification */
+        #toast-container {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .toast {
+            background: #2b2b2b;
+            color: #fff;
+            padding: 12px 20px;
+            border-radius: 8px;
+            border-left: 4px solid #b5a184;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            font-size: 0.85rem;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .university-watermark {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            font-family: 'Playfair Display', serif;
+            font-size: 3.5rem;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.1);
+            letter-spacing: 2px;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .hidden { display: none !important; }
+
+        @media (max-width: 768px) {
+            .main-title { font-size: 2rem; }
+            header { padding: 0 15px; }
+            .site-header-title { font-size: 1.2rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Navigation -->
+    <header>
+        <nav class="nav-group left authenticated-nav hidden">
+            <button onclick="switchView('home')" class="nav-link active" id="nav-home">HOME</button>
+            <button onclick="switchView('equipment')" class="nav-link" id="nav-equipment">EQUIPMENT</button>
+        </nav>
+        
+        <h1 class="site-header-title">Taguig City University</h1>
+        
+        <nav class="nav-group right authenticated-nav hidden">
+            <button onclick="switchView('portal')" class="nav-link" id="nav-portal">MY REQUESTS</button>
+            
+            <div id="user-info-bar" class="user-badge">
+                <i class="fa-solid fa-user-circle"></i>
+                <span id="user-display-email">user@tcu.edu.ph</span>
+                <span id="user-role-tag" class="role-indicator">STUDENT</span>
+                <button onclick="handleLogout()" title="Logout" style="background:none; border:none; color:#f87171; cursor:pointer; margin-left:8px;"><i class="fa-solid fa-right-from-bracket"></i></button>
+            </div>
+        </nav>
+    </header>
+
+    <!-- VIEW 0: AUTHENTICATION GATE -->
+    <div id="view-auth-gate" class="auth-gate-container">
+        <div class="auth-card">
+            
+            <!-- Login Box -->
+            <div id="gate-login-box">
+                <h2 style="font-family: 'Playfair Display', serif; font-size: 1.8rem; color: #b5a184; margin-bottom: 5px; text-align: center;">Portal Access Login</h2>
+                <p style="font-size: 0.85rem; color: #aaa; margin-bottom: 25px; text-align: center;">Please login with your TCU account to access the borrowing system.</p>
+                
+                <form onsubmit="handleAuthLogin(event)">
+                    <div class="form-group">
+                        <label>Email Address</label>
+                        <input type="email" id="gate-login-email" required placeholder="student@tcu.edu.ph">
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="gate-login-password" required placeholder="••••••••">
+                    </div>
+                    <button type="submit" class="action-btn" style="width: 100%; padding: 12px; font-size: 0.95rem; margin-bottom: 15px;">Login to Portal</button>
+                    <p style="text-align: center; font-size: 0.85rem;">Don't have an account? <span class="auth-toggle-link" onclick="toggleAuthGateMode('signup')">Register Here</span></p>
+                </form>
+            </div>
+
+            <!-- Signup Box -->
+            <div id="gate-signup-box" class="hidden">
+                <h2 style="font-family: 'Playfair Display', serif; font-size: 1.8rem; color: #b5a184; margin-bottom: 5px; text-align: center;">Create TCU Account</h2>
+                <p style="font-size: 0.85rem; color: #aaa; margin-bottom: 25px; text-align: center;">Register your details for student or admin access.</p>
+                
+                <form onsubmit="handleAuthSignUp(event)">
+                    <div class="form-group">
+                        <label>Full Name</label>
+                        <input type="text" id="gate-signup-name" required placeholder="Juan Dela Cruz">
+                    </div>
+                    <div class="form-group">
+                        <label>Account Role</label>
+                        <select id="gate-signup-role" required>
+                            <option value="student">Student Account</option>
+                            <option value="admin">Admin / Faculty Account</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Email Address</label>
+                        <input type="email" id="gate-signup-email" required placeholder="student@tcu.edu.ph">
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="gate-signup-password" required placeholder="At least 6 characters">
+                    </div>
+                    <button type="submit" class="action-btn" style="width: 100%; padding: 12px; font-size: 0.95rem; margin-bottom: 15px;">Create Account</button>
+                    <p style="text-align: center; font-size: 0.85rem;">Already have an account? <span class="auth-toggle-link" onclick="toggleAuthGateMode('login')">Login Here</span></p>
+                </form>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- MAIN APP CONTENT (Hidden until logged in) -->
+    <div id="main-app-wrapper" class="hidden">
+        
+        <!-- VIEW 1: HOME -->
+        <main id="view-home" class="hero-section">
+            <div class="hero-content">
+                <h2 class="main-title">
+                    <span>SMART CLASSROOM</span>
+                    <span>EQUIPMENT</span>
+                    <span>BORROWING</span>
+                    <span>SYSTEM</span>
+                </h2>
+                <button class="borrow-btn" onclick="switchView('equipment')">BORROW NOW</button>
+            </div>
+            <div class="university-watermark">TCU</div>
+        </main>
+
+        <!-- VIEW 2: EQUIPMENT CATALOG -->
+        <section id="view-equipment" class="app-section hidden">
+            <h2 class="section-title">Equipment Catalog</h2>
+            <p class="section-subtitle">Browse available smart classroom assets for lectures, presentations, and university events.</p>
+            
+            <div style="margin-bottom: 25px;">
+                <input type="text" id="catalog-search" oninput="renderCatalog()" placeholder="Search equipment by name or category..." 
+                       style="width: 100%; max-width: 400px; padding: 12px; background: #242424; border: 1px solid #444; border-radius: 8px; color: #fff;">
+            </div>
+
+            <div id="catalog-grid" class="catalog-grid"></div>
+        </section>
+
+        <!-- VIEW 3: STUDENT & ADMIN PORTAL -->
+        <section id="view-portal" class="app-section hidden">
+            <h2 class="section-title" id="portal-title">Borrowing & Request Dashboard</h2>
+            <p class="section-subtitle" id="portal-subtitle">Track requests, approve borrowings, and manage active asset returns.</p>
+
+            <div id="admin-stats" class="hidden" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;">
+                <div style="background: #242424; padding: 20px; border-radius: 10px; border: 1px solid #333;">
+                    <div style="font-size: 0.8rem; color: #aaa; text-transform: uppercase;">Pending Approvals</div>
+                    <div id="stat-pending" style="font-size: 2rem; font-weight: bold; color: #facc15; margin-top: 5px;">0</div>
+                </div>
+                <div style="background: #242424; padding: 20px; border-radius: 10px; border: 1px solid #333;">
+                    <div style="font-size: 0.8rem; color: #aaa; text-transform: uppercase;">Active Borrowed Items</div>
+                    <div id="stat-borrowed" style="font-size: 2rem; font-weight: bold; color: #4ade80; margin-top: 5px;">0</div>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="font-size: 1.1rem; font-weight: 600; color: #fff;">Request Records</h3>
+                <button id="add-equip-btn" class="action-btn hidden" onclick="openAddInventoryModal()">+ Add New Equipment</button>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Req ID</th>
+                            <th>Requester</th>
+                            <th>Equipment</th>
+                            <th>Qty</th>
+                            <th>Purpose / Room</th>
+                            <th>Status</th>
+                            <th style="text-align: right;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="requests-tbody"></tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <!-- REQUEST MODAL -->
+    <div id="request-modal" class="modal-overlay">
+        <div class="modal-box">
+            <button class="modal-close" onclick="closeRequestModal()">&times;</button>
+            <h3 style="font-family: 'Playfair Display', serif; font-size: 1.5rem; color: #b5a184; margin-bottom: 5px;">Request Equipment</h3>
+            <p style="font-size: 0.85rem; color: #aaa; margin-bottom: 20px;">Submit your borrowing request for approval.</p>
+            
+            <form onsubmit="handleRequestSubmit(event)">
+                <div class="form-group">
+                    <label>Student Full Name</label>
+                    <input type="text" id="req-student" required placeholder="e.g. Juan Cruz">
+                </div>
+                <div class="form-group">
+                    <label>Selected Equipment</label>
+                    <select id="req-equipment-select" required></select>
+                </div>
+                <div class="form-group">
+                    <label>Quantity</label>
+                    <input type="number" id="req-qty" min="1" value="1" required>
+                </div>
+                <div class="form-group">
+                    <label>Purpose / Room Number</label>
+                    <input type="text" id="req-purpose" required placeholder="e.g. Lecture in Rm 402">
+                </div>
+                <button type="submit" class="action-btn" style="width: 100%; padding: 12px; font-size: 0.95rem;">Submit Request</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ADD INVENTORY MODAL (Admin) -->
+    <div id="inventory-modal" class="modal-overlay">
+        <div class="modal-box">
+            <button class="modal-close" onclick="closeAddInventoryModal()">&times;</button>
+            <h3 style="font-family: 'Playfair Display', serif; font-size: 1.5rem; color: #b5a184; margin-bottom: 5px;">Add New Asset</h3>
+            <p style="font-size: 0.85rem; color: #aaa; margin-bottom: 20px;">Register new equipment into TCU inventory.</p>
+            
+            <form onsubmit="handleInventorySubmit(event)">
+                <div class="form-group">
+                    <label>Equipment Name</label>
+                    <input type="text" id="inv-name" required placeholder="e.g. Wireless Laser Pointer">
+                </div>
+                <div class="form-group">
+                    <label>Category</label>
+                    <select id="inv-category">
+                        <option value="Visual Display">Visual Display</option>
+                        <option value="Audio Equipment">Audio Equipment</option>
+                        <option value="Cables & Accessories">Cables & Accessories</option>
+                        <option value="Computing & Peripherals">Computing & Peripherals</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Total Stock Quantity</label>
+                    <input type="number" id="inv-qty" min="1" value="5" required>
+                </div>
+                <button type="submit" class="action-btn" style="width: 100%; padding: 12px; font-size: 0.95rem;">Save Equipment</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="toast-container"></div>
+
+    <script>
+        let inventory = [];
+        let requests = [];
+        let currentUser = null;
+        let currentUserRole = 'student';
+
+        window.addEventListener('load', () => {
+            initFirebaseListeners();
+        });
+
+        function initFirebaseListeners() {
+            if (!window.firebaseDb) return;
+
+            const { collection, onSnapshot } = window.fbFSFuncs;
+            const db = window.firebaseDb;
+
+            window.fbAuthFuncs.onAuthStateChanged(window.firebaseAuth, async (user) => {
+                currentUser = user;
+                if (user) {
+                    const userDocRef = window.fbFSFuncs.doc(db, "users", user.uid);
+                    const docSnap = await window.fbFSFuncs.getDoc(userDocRef);
+
+                    if (docSnap.exists()) {
+                        const userData = docSnap.data();
+                        currentUserRole = userData.role || 'student';
+                        document.getElementById('user-display-email').innerText = userData.name || user.email;
+                        document.getElementById('user-role-tag').innerText = currentUserRole.toUpperCase();
+                        document.getElementById('req-student').value = userData.name || '';
+                    } else {
+                        currentUserRole = 'student';
+                        document.getElementById('user-display-email').innerText = user.email;
+                        document.getElementById('user-role-tag').innerText = 'STUDENT';
+                    }
+
+                    document.getElementById('view-auth-gate').classList.add('hidden');
+                    document.getElementById('main-app-wrapper').classList.remove('hidden');
+                    document.querySelectorAll('.authenticated-nav').forEach(el => el.classList.remove('hidden'));
+
+                    applyRoleLayout();
+                    switchView('home');
+
+                } else {
+                    document.getElementById('view-auth-gate').classList.remove('hidden');
+                    document.getElementById('main-app-wrapper').classList.add('hidden');
+                    document.querySelectorAll('.authenticated-nav').forEach(el => el.classList.add('hidden'));
+                }
+            });
+
+            onSnapshot(collection(db, "inventory"), (snapshot) => {
+                inventory = [];
+                snapshot.forEach((docSnap) => {
+                    inventory.push({ docId: docSnap.id, ...docSnap.data() });
+                });
+                renderCatalog();
+            });
+
+            onSnapshot(collection(db, "requests"), (snapshot) => {
+                requests = [];
+                snapshot.forEach((docSnap) => {
+                    requests.push({ docId: docSnap.id, ...docSnap.data() });
+                });
+                renderPortalTable();
+            });
+        }
+
+        function applyRoleLayout() {
+            const addBtn = document.getElementById('add-equip-btn');
+            const adminStats = document.getElementById('admin-stats');
+
+            if (currentUserRole === 'admin') {
+                addBtn.classList.remove('hidden');
+                adminStats.classList.remove('hidden');
+                document.getElementById('portal-title').innerText = "Admin Control & Approvals";
+            } else {
+                addBtn.classList.add('hidden');
+                adminStats.classList.add('hidden');
+                document.getElementById('portal-title').innerText = "My Borrowing Requests";
+            }
+        }
+
+        function switchView(viewName) {
+            document.getElementById('view-home').classList.add('hidden');
+            document.getElementById('view-equipment').classList.add('hidden');
+            document.getElementById('view-portal').classList.add('hidden');
+
+            document.getElementById('nav-home').classList.remove('active');
+            document.getElementById('nav-equipment').classList.remove('active');
+            document.getElementById('nav-portal').classList.remove('active');
+
+            if (viewName === 'home') {
+                document.getElementById('view-home').classList.remove('hidden');
+                document.getElementById('nav-home').classList.add('active');
+            } else if (viewName === 'equipment') {
+                document.getElementById('view-equipment').classList.remove('hidden');
+                document.getElementById('nav-equipment').classList.add('active');
+                renderCatalog();
+            } else if (viewName === 'portal') {
+                document.getElementById('view-portal').classList.remove('hidden');
+                document.getElementById('nav-portal').classList.add('active');
+                renderPortalTable();
+            }
+        }
+
+        function toggleAuthGateMode(mode) {
+            if (mode === 'login') {
+                document.getElementById('gate-login-box').classList.remove('hidden');
+                document.getElementById('gate-signup-box').classList.add('hidden');
+            } else {
+                document.getElementById('gate-login-box').classList.add('hidden');
+                document.getElementById('gate-signup-box').classList.remove('hidden');
+            }
+        }
+
+        async function handleAuthLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('gate-login-email').value;
+            const password = document.getElementById('gate-login-password').value;
+
+            try {
+                await window.fbAuthFuncs.signInWithEmailAndPassword(window.firebaseAuth, email, password);
+                showToast("Logged in successfully!");
+            } catch (error) {
+                showToast("Login failed: " + error.message, "error");
+            }
+        }
+
+        async function handleAuthSignUp(e) {
+            e.preventDefault();
+            const name = document.getElementById('gate-signup-name').value;
+            const role = document.getElementById('gate-signup-role').value;
+            const email = document.getElementById('gate-signup-email').value;
+            const password = document.getElementById('gate-signup-password').value;
+
+            try {
+                const userCredential = await window.fbAuthFuncs.createUserWithEmailAndPassword(window.firebaseAuth, email, password);
+                const user = userCredential.user;
+
+                // Save user record with role into Firestore Database
+                await window.fbFSFuncs.setDoc(window.fbFSFuncs.doc(window.firebaseDb, "users", user.uid), {
+                    uid: user.uid,
+                    name: name,
+                    role: role,
+                    email: email,
+                    createdAt: window.fbFSFuncs.serverTimestamp()
+                });
+
+                showToast("Account registered successfully!");
+            } catch (error) {
+                showToast("Sign up failed: " + error.message, "error");
+            }
+        }
+
+        async function handleLogout() {
+            try {
+                await window.fbAuthFuncs.signOut(window.firebaseAuth);
+                showToast("Logged out successfully.");
+            } catch (error) {
+                showToast("Logout error: " + error.message, "error");
+            }
+        }
+
+        function renderCatalog() {
+            const grid = document.getElementById('catalog-grid');
+            if (!grid) return;
+            const searchTerm = (document.getElementById('catalog-search')?.value || '').toLowerCase();
+            grid.innerHTML = '';
+
+            const filtered = inventory.filter(item => 
+                (item.name || '').toLowerCase().includes(searchTerm) || (item.category || '').toLowerCase().includes(searchTerm)
+            );
+
+            if (filtered.length === 0) {
+                grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: #888; padding: 40px;">No equipment found matching your search.</div>`;
+                return;
+            }
+
+            filtered.forEach(item => {
+                const available = item.availableQty > 0;
+                const card = document.createElement('div');
+                card.className = 'item-card';
+                card.innerHTML = `
+                    <div>
+                        <span class="item-category">${item.category}</span>
+                        <div class="item-name">${item.name}</div>
+                    </div>
+                    <div class="item-footer">
+                        <span class="stock-badge ${available ? '' : 'out'}">
+                            ${available ? `${item.availableQty} Available` : 'Out of Stock'}
+                        </span>
+                        <button class="action-btn" ${!available ? 'disabled' : ''} onclick="openRequestModal('${item.docId}')">
+                            Request
+                        </button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function renderPortalTable() {
+            const tbody = document.getElementById('requests-tbody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            if (currentUserRole === 'admin') {
+                document.getElementById('stat-pending').innerText = requests.filter(r => r.status === 'Pending').length;
+                document.getElementById('stat-borrowed').innerText = requests.filter(r => r.isBorrowed).length;
+            }
+
+            const displayRequests = currentUserRole === 'admin' 
+                ? requests 
+                : requests.filter(r => r.userId === (currentUser ? currentUser.uid : ''));
+
+            if (displayRequests.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #888; padding: 30px;">No request records found in database.</td></tr>`;
+                return;
+            }
+
+            displayRequests.forEach(req => {
+                const item = inventory.find(i => i.docId === req.equipmentDocId);
+                const tr = document.createElement('tr');
+
+                let badgeClass = 'status-pending';
+                let statusText = req.status;
+
+                if (req.status === 'Approved' && !req.isBorrowed) {
+                    badgeClass = 'status-approved';
+                    statusText = 'Ready to Claim';
+                } else if (req.isBorrowed) {
+                    badgeClass = 'status-borrowed';
+                    statusText = 'Borrowed';
+                } else if (req.status === 'Rejected') {
+                    badgeClass = 'status-rejected';
+                } else if (req.status === 'Returned') {
+                    badgeClass = 'status-returned';
+                }
+
+                let actionHtml = '-';
+                if (currentUserRole === 'admin' && req.status === 'Pending') {
+                    actionHtml = `
+                        <button class="action-btn" style="background:#4ade80; padding:4px 10px; font-size:0.75rem;" onclick="updateRequestStatus('${req.docId}', 'Approved')">Approve</button>
+                        <button class="action-btn" style="background:#f87171; padding:4px 10px; font-size:0.75rem;" onclick="updateRequestStatus('${req.docId}', 'Rejected')">Reject</button>
+                    `;
+                } else if (currentUserRole === 'student' && req.status === 'Approved' && !req.isBorrowed) {
+                    actionHtml = `<button class="action-btn" style="padding:4px 10px; font-size:0.75rem;" onclick="claimEquipment('${req.docId}')">Claim</button>`;
+                } else if (currentUserRole === 'student' && req.isBorrowed) {
+                    actionHtml = `<button class="action-btn" style="background:#60a5fa; padding:4px 10px; font-size:0.75rem;" onclick="returnEquipment('${req.docId}')">Return</button>`;
+                }
+
+                tr.innerHTML = `
+                    <td style="font-family: monospace; color: #aaa;">#${req.reqId || req.docId.slice(0,5)}</td>
+                    <td style="font-weight: 500;">${req.studentName}</td>
+                    <td>${item ? item.name : (req.equipmentName || 'Equipment')}</td>
+                    <td><b>${req.qty}</b></td>
+                    <td style="color: #bbb; font-size: 0.85rem;">${req.purpose}</td>
+                    <td><span class="status-badge ${badgeClass}">${statusText}</span></td>
+                    <td style="text-align: right; white-space: nowrap;">${actionHtml}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function openRequestModal(preselectDocId = null) {
+            const select = document.getElementById('req-equipment-select');
+            select.innerHTML = '';
+            inventory.forEach(item => {
+                if (item.availableQty > 0) {
+                    const opt = document.createElement('option');
+                    opt.value = item.docId;
+                    opt.textContent = `${item.name} (${item.availableQty} available)`;
+                    if (preselectDocId && item.docId === preselectDocId) opt.selected = true;
+                    select.appendChild(opt);
+                }
+            });
+            document.getElementById('request-modal').classList.add('active');
+        }
+
+        function closeRequestModal() {
+            document.getElementById('request-modal').classList.remove('active');
+        }
+
+        function openAddInventoryModal() {
+            document.getElementById('inventory-modal').classList.add('active');
+        }
+
+        function closeAddInventoryModal() {
+            document.getElementById('inventory-modal').classList.remove('active');
+        }
+
+        async function handleRequestSubmit(e) {
+            e.preventDefault();
+            const studentName = document.getElementById('req-student').value;
+            const equipmentDocId = document.getElementById('req-equipment-select').value;
+            const qty = parseInt(document.getElementById('req-qty').value);
+            const purpose = document.getElementById('req-purpose').value;
+
+            const item = inventory.find(i => i.docId === equipmentDocId);
+            if (!item || qty > item.availableQty) {
+                showToast("Requested quantity exceeds available stock!", "error");
+                return;
+            }
+
+            try {
+                await window.fbFSFuncs.addDoc(window.fbFSFuncs.collection(window.firebaseDb, "requests"), {
+                    reqId: Math.floor(100 + Math.random() * 900),
+                    studentName,
+                    equipmentDocId,
+                    equipmentName: item.name,
+                    qty,
+                    purpose,
+                    status: 'Pending',
+                    isBorrowed: false,
+                    userId: currentUser ? currentUser.uid : null,
+                    createdAt: window.fbFSFuncs.serverTimestamp()
+                });
+
+                closeRequestModal();
+                showToast("Borrow request submitted to database!");
+                switchView('portal');
+            } catch (error) {
+                showToast("Failed to submit request: " + error.message, "error");
+            }
+        }
+
+        async function handleInventorySubmit(e) {
+            e.preventDefault();
+            const name = document.getElementById('inv-name').value;
+            const category = document.getElementById('inv-category').value;
+            const qty = parseInt(document.getElementById('inv-qty').value);
+
+            try {
+                await window.fbFSFuncs.addDoc(window.fbFSFuncs.collection(window.firebaseDb, "inventory"), {
+                    name,
+                    category,
+                    totalQty: qty,
+                    availableQty: qty,
+                    createdAt: window.fbFSFuncs.serverTimestamp()
+                });
+
+                closeAddInventoryModal();
+                showToast("New asset added to TCU inventory!");
+            } catch (error) {
+                showToast("Failed to add equipment: " + error.message, "error");
+            }
+        }
+
+        async function updateRequestStatus(reqDocId, status) {
+            try {
+                const reqRef = window.fbFSFuncs.doc(window.firebaseDb, "requests", reqDocId);
+                await window.fbFSFuncs.updateDoc(reqRef, { status: status });
+                showToast(`Request status updated to ${status}.`);
+            } catch (error) {
+                showToast("Update error: " + error.message, "error");
+            }
+        }
+
+        async function claimEquipment(reqDocId) {
+            const req = requests.find(r => r.docId === reqDocId);
+            if (!req) return;
+            const item = inventory.find(i => i.docId === req.equipmentDocId);
+
+            if (item && item.availableQty >= req.qty) {
+                try {
+                    const itemRef = window.fbFSFuncs.doc(window.firebaseDb, "inventory", item.docId);
+                    await window.fbFSFuncs.updateDoc(itemRef, { availableQty: item.availableQty - req.qty });
+
+                    const reqRef = window.fbFSFuncs.doc(window.firebaseDb, "requests", reqDocId);
+                    await window.fbFSFuncs.updateDoc(reqRef, { isBorrowed: true });
+
+                    showToast("Equipment claimed successfully!");
+                } catch (error) {
+                    showToast("Claim error: " + error.message, "error");
+                }
+            } else {
+                showToast("Insufficient stock to claim item.", "error");
+            }
+        }
+
+        async function returnEquipment(reqDocId) {
+            const req = requests.find(r => r.docId === reqDocId);
+            if (!req) return;
+            const item = inventory.find(i => i.docId === req.equipmentDocId);
+
+            try {
+                if (item) {
+                    const itemRef = window.fbFSFuncs.doc(window.firebaseDb, "inventory", item.docId);
+                    await window.fbFSFuncs.updateDoc(itemRef, { availableQty: item.availableQty + req.qty });
+                }
+
+                const reqRef = window.fbFSFuncs.doc(window.firebaseDb, "requests", reqDocId);
+                await window.fbFSFuncs.updateDoc(reqRef, { isBorrowed: false, status: 'Returned' });
+
+                showToast("Equipment returned and stock updated!");
+            } catch (error) {
+                showToast("Return error: " + error.message, "error");
+            }
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.style.borderLeftColor = type === 'error' ? '#f87171' : '#b5a184';
+            toast.innerHTML = `<i class="fa-solid ${type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check'}"></i> ${message}`;
+            
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
